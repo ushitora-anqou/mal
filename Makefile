@@ -1,3 +1,6 @@
+step3_env: step3_env.cpp reader.cpp type.cpp
+	g++ -o $@ -std=c++17 -g -O0 $^
+
 step2_eval: step2_eval.cpp reader.cpp type.cpp
 	g++ -o $@ -std=c++17 -g -O0 $^
 

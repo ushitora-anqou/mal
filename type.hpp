@@ -67,7 +67,7 @@ public:
     MalSymbol(const std::string& name) : name_(name) {}
 
     std::string pr_str() const { return name_; }
-    const std::string& getName() const { return name_; }
+    const std::string& name() const { return name_; }
 
     MalTypePtr eval(EnvPtr env);
 
@@ -98,10 +98,15 @@ public:
 
     std::string pr_str() const
     {
+        if (list_.empty()) return "()";
+
         std::stringstream ss;
         ss << "(";
-        for (auto&& item : list_) ss << item->pr_str() << " ";
-        ss.seekp(-1, ss.cur);
+        for (auto it = list_.begin();;) {
+            ss << (*it++)->pr_str();
+            if (it == list_.end()) break;
+            ss << " ";
+        }
         ss << ")";
         return ss.str();
     }
@@ -112,5 +117,7 @@ public:
     MalTypePtr eval(EnvPtr env);
     std::shared_ptr<MalList> as_list() { return shared_from_this(); }
 };
+
+MalTypePtr mal_eval(MalTypePtr ast, EnvPtr env);
 
 #endif

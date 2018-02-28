@@ -29,7 +29,7 @@ public:
         auto it = data_.find(key);
         if (it != data_.end()) return shared_from_this();
         HOOLIB_THROW_IF(outer_ == nullptr,
-                        HooLib::fok("key '", key, "' weren't found."));
+                        HooLib::fok("key '", key, "' was not found."));
         return outer_->find(key);
     }
 
