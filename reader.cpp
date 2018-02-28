@@ -4,7 +4,7 @@ std::shared_ptr<MalAtom> Reader::read_atom()
 {
     auto token = pop();
     if ('0' <= token[0] && token[0] <= '9')  // number
-        return std::make_shared<MalBuiltInType>(std::stoi(token));
+        return std::make_shared<MalInteger>(std::stoi(token));
     else
         return std::make_shared<MalSymbol>(token);
 }
