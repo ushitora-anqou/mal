@@ -1,3 +1,6 @@
+step4_if_fn_do: step4_if_fn_do.cpp reader.cpp type.cpp
+	g++ -o $@ -Wall -std=c++17 -g -O0 $^
+
 step3_env: step3_env.cpp reader.cpp type.cpp
 	g++ -o $@ -std=c++17 -g -O0 $^
 

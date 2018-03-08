@@ -19,6 +19,17 @@ private:
 public:
     Env(EnvPtr outer = nullptr) : outer_(std::move(outer)) {}
 
+    template <class T>
+    Env(EnvPtr outer, const std::vector<std::string>& binds,
+        const HooLib::Range<T>& exprs)
+        : outer_(std::move(outer))
+    {
+        HOOLIB_THROW_UNLESS(
+            binds.size() == static_cast<decltype(binds.size())>(exprs.size()),
+            "invalid argument");
+        for (size_t i = 0; i < binds.size(); i++) set(binds[i], exprs[i]);
+    }
+
     void set(const std::string& key, const MalTypePtr& value)
     {
         data_[key] = value;

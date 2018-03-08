@@ -135,6 +135,26 @@ std::string fok(const std::string& head, Args... args)
     return head + fok(args...);
 }
 
+template <class Iterator, class Callback>
+std::string join(Iterator begin, Iterator end, const std::string& delim,
+                 Callback cb)
+{
+    if (begin == end) return "";
+    std::stringstream ss;
+    for (auto it = begin;;) {
+        ss << cb(*it++);
+        if (it == end) break;
+        ss << delim;
+    }
+    return ss.str();
+}
+
+template <class Iterator>
+std::string join(Iterator begin, Iterator end, const std::string& delim)
+{
+    return join(begin, end, delim, [](auto&& item) { return item; });
+}
+
 template <class Head, class... Args>
 Head max(Head head, Args... args)
 {
@@ -162,28 +182,44 @@ Head min(Head head, Tail tail)
 }
 
 template <class T>
-std::string to_str(T t)
+std::string to_str(T&& t)
 {
     std::stringstream ss;
     ss << t;
     return ss.str();
 }
 
-inline int str2int(const std::string& str)
+template <>
+inline std::string to_str(std::string& str)
 {
-    HOOLIB_THROW_UNLESS(!str.empty(), "str is empty.");
+    return str;
+}
 
-    bool isMinus = false;
-    if (str[0] == '-') isMinus = true;
+template <>
+inline std::string to_str(const std::string& str)
+{
+    return str;
+}
 
-    int res = 0;
-    for (int i = (isMinus ? 1 : 0); i < str.size(); i++) {
-        char ch = str[i];
-        HOOLIB_THROW_UNLESS('0' <= ch && ch <= '9', "not number");
-        res = res * 10 + (ch - '0');
+// convert string to int
+// if string has any invalid char, it throws exception
+// errno will not be changed
+inline int str2int(const std::string& str, int base = 0)
+{
+    auto errno_org = errno;
+    int ret = 0;
+    try {
+        size_t idx;
+        ret = stoi(str, &idx, base);
+        HOOLIB_THROW_UNLESS(str.size() == idx,
+                            "invalid argument: str should have only numbers");
     }
-
-    return isMinus ? -res : res;
+    catch (...) {
+        errno = errno_org;
+        throw;
+    }
+    errno = errno_org;
+    return ret;
 }
 
 inline std::mt19937& getRandomEngine()
@@ -204,7 +240,7 @@ inline double randomFloat(double min, double sup)
     return std::uniform_real_distribution<>(min, sup)(getRandomEngine());
 }
 
-// return actual number of swap
+// return actual number of swaps
 template <class RandomAccessIterator>
 int shuffle(RandomAccessIterator first, RandomAccessIterator last)
 {
@@ -215,7 +251,6 @@ int shuffle(RandomAccessIterator first, RandomAccessIterator last)
     using unsigned_type = typename std::make_unsigned<distance_type>::type;
     using distribute_type =
         typename std::uniform_int_distribution<unsigned_type>;
-    using param_type = typename distribute_type::param_type;
 
     auto g = getRandomEngine();
     distribute_type d;
@@ -420,6 +455,7 @@ template <class T>
 std::ostream& operator<<(std::ostream& os, const Vec2<T>& v)
 {
     os << "(" << v.x << "," << v.y << ")";
+    return os;
 }
 
 template <class T>
@@ -530,6 +566,101 @@ std::vector<T> operator+(std::vector<T> lhs, const std::vector<T>& rhs)
     return lhs;
 }
 }  // namespace Operator
+
+template <class Iterator>
+class Range {
+    using iter_traits = std::iterator_traits<Iterator>;
+    using difference_type = typename iter_traits::difference_type;
+    using reference = typename iter_traits::reference;
+
+private:
+    Iterator begin_, end_;
+
+public:
+    Range(Iterator begin, Iterator end) : begin_(begin), end_(end) {}
+
+    Iterator begin() const { return begin_; }
+    Iterator end() const { return end_; }
+
+    difference_type size() const { return std::distance(begin_, end_); }
+
+    reference operator[](difference_type index)
+    {
+        auto it = begin_;
+        std::advance(it, index);
+        return *it;
+    }
+
+    reference operator[](difference_type index) const
+    {
+        auto it = begin_;
+        std::advance(it, index);
+        return *it;
+    }
+};
+
+inline std::string cpp_escape_string(const std::string& src)
+{
+    std::stringstream ss;
+    ss << "\"";
+    for (char ch : src) {
+        switch (ch) {
+            case '\n':
+                ss << "\\n";
+                break;
+            case '\t':
+                ss << "\\t";
+                break;
+            case '\\':
+                ss << "\\\\";
+                break;
+            case '\"':
+                ss << "\\\"";
+                break;
+            default:
+                ss << ch;
+                break;
+        }
+    }
+    ss << "\"";
+    return ss.str();
+}
+
+inline std::string cpp_unescape_string(const std::string& src)
+{
+    bool backslashed = false;
+    std::string ret;
+    for (size_t i = 1; i < src.size() - 1; i++) {
+        char ch = src[i];
+        if (backslashed) {
+            backslashed = false;
+            switch (ch) {
+                case 'n':
+                    ret.push_back('\n');
+                    break;
+                case '\\':
+                    ret.push_back('\\');
+                    break;
+                case '"':
+                    ret.push_back('"');
+                    break;
+                case 't':
+                    ret.push_back('\t');
+                    break;
+            }
+            continue;
+        }
+
+        if (ch == '\\') {
+            backslashed = true;
+            continue;
+        }
+
+        ret.push_back(ch);
+    }
+    return ret;
+}
+
 }  // namespace HooLib
 
 #endif

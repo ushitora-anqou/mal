@@ -1,25 +1,43 @@
 #include "reader.hpp"
+#include "factory.hpp"
+#include "helper.hpp"
 
 std::shared_ptr<MalAtom> Reader::read_atom()
 {
     auto token = pop();
     if ('0' <= token[0] && token[0] <= '9')  // number
-        return std::make_shared<MalInteger>(std::stoi(token));
+        return mal::make_shared<MalInteger>(HooLib::str2int(token));
+    else if (token[0] == '"')  // string
+        return mal::make_shared<MalString>(HooLib::cpp_unescape_string(token));
+    else if (token[0] == ':')  // keyword
+        return mal::make_shared<MalString>(mal::helper::string2keyword(token));
+    else if (token == "nil")
+        return mal::make_shared<MalNil>();
+    else if (token == "true")
+        return mal::make_shared<MalTrue>();
+    else if (token == "false")
+        return mal::make_shared<MalFalse>();
     else
-        return std::make_shared<MalSymbol>(token);
+        return mal::make_shared<MalSymbol>(token);
 }
 
-std::shared_ptr<MalList> Reader::read_list()
+std::vector<MalTypePtr> Reader::read_list_items(const std::string& end_token)
 {
-    pop();  // pop "("
-    std::vector<MalTypePtr> list;
-    while (peek() != ")") list.push_back(read_form());
     pop();
-    return std::make_shared<MalList>(std::move(list));
+    std::vector<MalTypePtr> items;
+    while (peek() != end_token) {
+        auto ast = read_form();
+        HOOLIB_THROW_UNLESS(ast, "invalid ast");
+        items.push_back(ast);
+    }
+    pop();
+    return items;
 }
 
 MalTypePtr Reader::read_form()
 {
-    if (peek() == "(") return read_list();
+    auto next = peek();
+    if (next == "(") return mal::make_shared<MalList>(read_list_items(")"));
+    if (next == "[") return mal::make_shared<MalVector>(read_list_items("]"));
     return read_atom();
 }
