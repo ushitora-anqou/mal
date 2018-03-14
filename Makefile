@@ -1,3 +1,6 @@
+step5_tco: step5_tco.cpp reader.cpp type.cpp
+	g++ -o $@ -Wall -std=c++17 -g -O0 $^
+
 step4_if_fn_do: step4_if_fn_do.cpp reader.cpp type.cpp
 	g++ -o $@ -Wall -std=c++17 -g -O0 $^
 

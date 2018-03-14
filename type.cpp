@@ -2,7 +2,9 @@
 #include "factory.hpp"
 #include "helper.hpp"
 
-MalTypePtr mal_eval_special(MalTypePtr ast, EnvPtr env);
+using TCOSwitch = std::variant<MalTypePtr, std::tuple<MalTypePtr, EnvPtr>>;
+
+TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env);
 
 MalTypePtr MalSymbol::eval(EnvPtr env) { return env->get(name_); }
 
@@ -47,21 +49,35 @@ MalTypePtr MalVector::eval(EnvPtr env)
 
 MalTypePtr mal_eval(MalTypePtr ast, EnvPtr env)
 {
-    HOOLIB_THROW_UNLESS(ast, "invalid ast");
+    while (true) {
+        HOOLIB_THROW_UNLESS(ast, "invalid ast");
 
-    if (auto ret = mal_eval_special(ast, env)) return ret;
+        {
+            // special eval
+            auto ret = mal_eval_special(ast, env);
+            switch (ret.index()) {
+                case 0:
+                    if (auto value = std::get<0>(ret)) return value;
+                    break;
 
-    ast = ast->eval(env);  // eval_ast
-    auto list_src = ast->as_list();
-    if (!list_src || list_src->get().empty()) return ast;
-    const auto& list = list_src->get();
-    auto func = list[0]->as_function();
-    HOOLIB_THROW_UNLESS(func, "invalid list: not function");
+                case 1:
+                    std::tie(ast, env) = std::get<1>(ret);
+                    continue;
+            }
+        }
 
-    return func->call(MalFunction::Args(list.begin() + 1, list.end()));
+        ast = ast->eval(env);  // eval_ast
+        auto list_src = ast->as_list();
+        if (!list_src || list_src->get().empty()) return ast;
+        const auto& list = list_src->get();
+        auto func = list[0]->as_function();
+        HOOLIB_THROW_UNLESS(func, "invalid list: not function");
+
+        return func->call(MalFunction::Args(list.begin() + 1, list.end()));
+    }
 }
 
-MalTypePtr mal_eval_special(MalTypePtr ast, EnvPtr env)
+TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env)
 {
     auto list = ast->as_list();
     if (!list || list->get().empty()) return nullptr;
@@ -95,14 +111,20 @@ MalTypePtr mal_eval_special(MalTypePtr ast, EnvPtr env)
             let_env->set(key_symbol->name(), value);
         }
 
-        return mal_eval(args[2], let_env);
+        return std::make_tuple(args[2], let_env);
     }
 
     if (name == "do") {
-        MalTypePtr ret = mal::nil();
-        for (auto it = args.begin(); ++it != args.end();)
-            ret = mal_eval(*it, env);
-        return ret;
+        auto size = args.size();
+        if (size == 1) return mal::nil();
+        if (size == 2) return std::make_tuple(args[1], env);
+
+        auto it = args.begin();
+        auto end = args.end();
+        --end;
+        auto ret = mal::nil();
+        for (; ++it != end;) mal_eval(*it, env);
+        return std::make_tuple(*end, env);
     }
 
     if (name == "if") {
@@ -111,10 +133,10 @@ MalTypePtr mal_eval_special(MalTypePtr ast, EnvPtr env)
         auto cond = mal_eval(args[1], env);
         if (cond->as_nil() || cond->as_false()) {  // false
             if (args.size() == 3) return mal::nil();
-            return mal_eval(args[3], env);
+            return std::make_tuple(args[3], env);
         }
         // true
-        return mal_eval(args[2], env);
+        return std::make_tuple(args[2], env);
     }
 
     if (name == "fn*") {
