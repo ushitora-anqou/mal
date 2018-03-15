@@ -39,9 +39,25 @@ inline std::shared_ptr<MalFalse> make_shared()
     return instance;
 }
 
+inline std::shared_ptr<MalList> list(const std::vector<MalTypePtr>& items)
+{
+    return ::mal::make_shared<MalList>(items);
+}
+inline std::shared_ptr<MalSymbol> symbol(const std::string& name)
+{
+    return ::mal::make_shared<MalSymbol>(name);
+}
 inline std::shared_ptr<MalInteger> int_(long long int num)
 {
     return make_shared<MalInteger>(num);
+}
+inline std::shared_ptr<MalAtom> atom(const MalTypePtr& ref)
+{
+    return ::mal::make_shared<MalAtom>(ref);
+}
+inline std::shared_ptr<MalString> string(const std::string& str)
+{
+    return ::mal::make_shared<MalString>(str);
 }
 inline std::shared_ptr<MalNil> nil() { return make_shared<MalNil>(); }
 inline std::shared_ptr<MalTrue> true_() { return make_shared<MalTrue>(); }

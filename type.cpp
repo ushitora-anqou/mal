@@ -8,6 +8,13 @@ TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env);
 
 MalTypePtr MalSymbol::eval(EnvPtr env) { return env->get(name_); }
 
+std::string MalAtom::pr_str(bool print_readably) const
+{
+    std::stringstream ss;
+    ss << "(atom " << ref_->pr_str(print_readably) << ")";
+    return ss.str();
+}
+
 std::string MalString::pr_str(bool print_readably) const
 {
     if (mal::helper::is_keyword(data_))

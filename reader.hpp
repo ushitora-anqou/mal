@@ -14,7 +14,7 @@ public:
     Reader(const std::string& src)
     {
         auto re = std::regex(
-            R"([\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|[^\s\[\]{}('"`,;)]*)(?:;.*)?)");
+            R"([\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|[^\s\[\]{}('"`,;)]*)?(?:;.*)?)");
         HooLib::search(HOOLIB_RANGE(src), re, [& tokens_ = tokens_](auto&& m) {
             auto str = m.str(1);
             if (!str.empty()) tokens_.emplace_back(str);
@@ -36,12 +36,17 @@ public:
         return ret;
     }
 
-    std::shared_ptr<MalAtom> read_atom();
-    std::shared_ptr<MalList> read_list();
-    MalTypePtr read_form();
+    MalTypePtr parse();
 
 private:
+    std::shared_ptr<MalType> read_atom();
+    std::shared_ptr<MalList> read_list();
+    MalTypePtr read_form();
     std::vector<MalTypePtr> read_list_items(const std::string& end_token);
 };
+
+namespace mal {
+std::shared_ptr<MalString> read_file_all(const std::string& filename);
+}  // namespace mal
 
 #endif

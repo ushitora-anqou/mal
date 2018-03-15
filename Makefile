@@ -1,3 +1,6 @@
+step6_file: step6_file.cpp reader.cpp type.cpp
+	g++ -o $@ -Wall -std=c++17 -g -O0 $^
+
 step5_tco: step5_tco.cpp reader.cpp type.cpp
 	g++ -o $@ -Wall -std=c++17 -g -O0 $^
 

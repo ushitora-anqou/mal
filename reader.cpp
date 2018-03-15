@@ -1,8 +1,15 @@
 #include "reader.hpp"
+#include <fstream>
 #include "factory.hpp"
 #include "helper.hpp"
 
-std::shared_ptr<MalAtom> Reader::read_atom()
+MalTypePtr Reader::parse()
+{
+    if (tokens_.empty()) return mal::nil();
+    return read_form();
+}
+
+std::shared_ptr<MalType> Reader::read_atom()
 {
     auto token = pop();
     if ('0' <= token[0] && token[0] <= '9')  // number
@@ -39,5 +46,10 @@ MalTypePtr Reader::read_form()
     auto next = peek();
     if (next == "(") return mal::make_shared<MalList>(read_list_items(")"));
     if (next == "[") return mal::make_shared<MalVector>(read_list_items("]"));
+    if (next == "@") {
+        pop();
+        auto ast = read_form();
+        return mal::list({mal::symbol("deref"), ast});
+    }
     return read_atom();
 }

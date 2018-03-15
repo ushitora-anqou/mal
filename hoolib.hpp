@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <fstream>
 #include <memory>
 #include <ostream>
 #include <random>
@@ -659,6 +660,22 @@ inline std::string cpp_unescape_string(const std::string& src)
         ret.push_back(ch);
     }
     return ret;
+}
+
+inline std::string getline_all(std::istream& is)
+{
+    std::stringstream ss;
+    std::string input;
+    while (std::getline(is, input)) ss << input << std::endl;
+    return ss.str();
+}
+
+inline std::string read_file_all(const std::string& filename)
+{
+    std::ifstream ifs(filename);
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return ss.str();
 }
 
 }  // namespace HooLib

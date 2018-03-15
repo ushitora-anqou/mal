@@ -14,6 +14,7 @@ using MalTypePtr = std::shared_ptr<MalType>;
 
 class MalFunction;
 class MalInteger;
+class MalAtom;
 class MalSymbol;
 class MalNil;
 class MalTrue;
@@ -23,50 +24,31 @@ class MalSequential;
 class MalList;
 class MalVector;
 
+#define MAL_DEFINE_AS_BASE(classname, typename)                            \
+public:                                                                    \
+    virtual std::shared_ptr<classname> as_##typename() { return nullptr; } \
+    virtual std::shared_ptr<const classname> as_##typename() const         \
+    {                                                                      \
+        return nullptr;                                                    \
+    }
+
 class MalType : public std::enable_shared_from_this<MalType> {
 public:
     virtual MalTypePtr eval(EnvPtr env) = 0;
 
     virtual std::string pr_str(bool print_readably) const = 0;
 
-    virtual std::shared_ptr<MalInteger> as_integer() { return nullptr; }
-    virtual std::shared_ptr<const MalInteger> as_integer() const
-    {
-        return nullptr;
-    }
-    virtual std::shared_ptr<MalFunction> as_function() { return nullptr; }
-    virtual std::shared_ptr<const MalFunction> as_function() const
-    {
-        return nullptr;
-    }
-    virtual std::shared_ptr<MalSymbol> as_symbol() { return nullptr; }
-    virtual std::shared_ptr<const MalSymbol> as_symbol() const
-    {
-        return nullptr;
-    }
-    virtual std::shared_ptr<MalNil> as_nil() { return nullptr; }
-    virtual std::shared_ptr<const MalNil> as_nil() const { return nullptr; }
-    virtual std::shared_ptr<MalTrue> as_true() { return nullptr; }
-    virtual std::shared_ptr<const MalTrue> as_true() const { return nullptr; }
-    virtual std::shared_ptr<MalFalse> as_false() { return nullptr; }
-    virtual std::shared_ptr<const MalFalse> as_false() const { return nullptr; }
-    virtual std::shared_ptr<MalString> as_string() { return nullptr; }
-    virtual std::shared_ptr<const MalString> as_string() const
-    {
-        return nullptr;
-    }
-    virtual std::shared_ptr<MalSequential> as_sequential() { return nullptr; }
-    virtual std::shared_ptr<const MalSequential> as_sequential() const
-    {
-        return nullptr;
-    }
-    virtual std::shared_ptr<MalList> as_list() { return nullptr; }
-    virtual std::shared_ptr<const MalList> as_list() const { return nullptr; }
-    virtual std::shared_ptr<MalVector> as_vector() { return nullptr; }
-    virtual std::shared_ptr<const MalVector> as_vector() const
-    {
-        return nullptr;
-    }
+    MAL_DEFINE_AS_BASE(MalInteger, integer);
+    MAL_DEFINE_AS_BASE(MalFunction, function);
+    MAL_DEFINE_AS_BASE(MalAtom, atom);
+    MAL_DEFINE_AS_BASE(MalSymbol, symbol);
+    MAL_DEFINE_AS_BASE(MalNil, nil);
+    MAL_DEFINE_AS_BASE(MalTrue, true);
+    MAL_DEFINE_AS_BASE(MalFalse, false);
+    MAL_DEFINE_AS_BASE(MalString, string);
+    MAL_DEFINE_AS_BASE(MalSequential, sequential);
+    MAL_DEFINE_AS_BASE(MalList, list);
+    MAL_DEFINE_AS_BASE(MalVector, vector);
 
     virtual bool is_equal_to(const MalTypePtr& rhs) const
     {
@@ -120,9 +102,27 @@ public:
 };
 
 class MalAtom : public MalType {
+    MAL_DEFINE_GET_THIS_PTR(MalAtom);
+    MAL_DEFINE_AS(MalAtom, atom);
+
+private:
+    MalTypePtr ref_;
+
+public:
+    MalAtom(MalTypePtr ref) : ref_(ref) {}
+
+    MalTypePtr eval(EnvPtr env)
+    {
+        HOOLIB_THROW("MalAtom couldn't be evaluated");
+    }
+    std::string pr_str(bool print_readably) const;
+
+    void set_ref(MalTypePtr ref) { ref_ = std::move(ref); }
+    MalTypePtr deref() { return ref_; }
+    const MalTypePtr& deref() const { return ref_; }
 };
 
-class MalSymbol : public MalAtom {
+class MalSymbol : public MalType {
     MAL_DEFINE_GET_THIS_PTR(MalSymbol);
     MAL_DEFINE_AS(MalSymbol, symbol);
 
@@ -144,7 +144,7 @@ public:
     }
 };
 
-class MalInteger : public MalAtom {
+class MalInteger : public MalType {
     MAL_DEFINE_GET_THIS_PTR(MalInteger);
     MAL_DEFINE_AS(MalInteger, integer);
 
@@ -168,7 +168,7 @@ public:
     }
 };
 
-class MalNil : public MalAtom {
+class MalNil : public MalType {
     MAL_DEFINE_GET_THIS_PTR(MalNil);
     MAL_DEFINE_AS(MalNil, nil);
 
@@ -177,7 +177,7 @@ public:
     MalTypePtr eval(EnvPtr env) { return get_this_pointer(); }
 };
 
-class MalTrue : public MalAtom {
+class MalTrue : public MalType {
     MAL_DEFINE_GET_THIS_PTR(MalTrue);
     MAL_DEFINE_AS(MalTrue, true);
 
@@ -186,7 +186,7 @@ public:
     MalTypePtr eval(EnvPtr env) { return get_this_pointer(); }
 };
 
-class MalFalse : public MalAtom {
+class MalFalse : public MalType {
     MAL_DEFINE_GET_THIS_PTR(MalFalse);
     MAL_DEFINE_AS(MalFalse, false);
 
@@ -195,7 +195,7 @@ public:
     MalTypePtr eval(EnvPtr env) { return get_this_pointer(); }
 };
 
-class MalString : public MalAtom {
+class MalString : public MalType {
     MAL_DEFINE_GET_THIS_PTR(MalString);
     MAL_DEFINE_AS(MalString, string);
 
