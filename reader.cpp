@@ -51,5 +51,26 @@ MalTypePtr Reader::read_form()
         auto ast = read_form();
         return mal::list({mal::symbol("deref"), ast});
     }
+    if (next == "'") {
+        pop();
+        auto ast = read_form();
+        return mal::list({mal::symbol("quote"), ast});
+    }
+    if (next == "`") {
+        pop();
+        auto ast = read_form();
+        return mal::list({mal::symbol("quasiquote"), ast});
+    }
+    if (next == "~") {
+        pop();
+        auto ast = read_form();
+        return mal::list({mal::symbol("unquote"), ast});
+    }
+    if (next == "~@") {
+        pop();
+        auto ast = read_form();
+        return mal::list({mal::symbol("splice-unquote"), ast});
+    }
+
     return read_atom();
 }

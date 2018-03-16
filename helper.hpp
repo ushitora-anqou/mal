@@ -23,6 +23,13 @@ inline std::string keyword2string(const std::string& keyword)
     return std::string(keyword.begin() + 1, keyword.end());
 }
 
+inline bool is_pair(const MalTypePtr& value)
+{
+    const auto seq = value->as_sequential();
+    if (!seq) return false;
+    return !seq->get().empty();
+}
+
 }  // namespace mal::helper
 
 #endif

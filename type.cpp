@@ -5,6 +5,7 @@
 using TCOSwitch = std::variant<MalTypePtr, std::tuple<MalTypePtr, EnvPtr>>;
 
 TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env);
+MalTypePtr quasiquote(const MalTypePtr& ast);
 
 MalTypePtr MalSymbol::eval(EnvPtr env) { return env->get(name_); }
 
@@ -73,10 +74,12 @@ MalTypePtr mal_eval(MalTypePtr ast, EnvPtr env)
             }
         }
 
-        ast = ast->eval(env);  // eval_ast
-        auto list_src = ast->as_list();
-        if (!list_src || list_src->get().empty()) return ast;
-        const auto& list = list_src->get();
+        auto ast_list = ast->as_list();
+        if (!ast_list) return ast->eval(env);
+        if (ast_list->get().empty()) return ast;
+
+        ast_list = ast_list->eval(env)->as_list();
+        const auto& list = ast_list->get();
         auto func = list[0]->as_function();
         HOOLIB_THROW_UNLESS(func, "invalid list: not function");
 
@@ -171,5 +174,45 @@ TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env)
         });
     }
 
+    if (name == "quote") {
+        HOOLIB_THROW_UNLESS(args.size() == 2, "invalid number of arguments");
+        return args[1];
+    }
+
+    if (name == "quasiquote") {
+        HOOLIB_THROW_UNLESS(args.size() == 2, "invalid number of arguments");
+        return std::make_tuple(quasiquote(args[1]), env);
+    }
+
     return nullptr;
+}
+
+MalTypePtr quasiquote(const MalTypePtr& ast)
+{
+    if (!mal::helper::is_pair(ast))
+        return mal::list({mal::symbol("quote"), ast});
+
+    auto ast_seq = ast->as_sequential()->get();
+    if (auto symbol = ast_seq[0]->as_symbol()) {
+        if (symbol->name() == "unquote") {
+            HOOLIB_THROW_UNLESS(ast_seq.size() == 2, "invalid argument");
+            return ast_seq[1];
+        }
+    }
+
+    if (mal::helper::is_pair(ast_seq[0])) {
+        auto ast_seq_0_seq = ast_seq[0]->as_sequential()->get();
+        if (auto symbol = ast_seq_0_seq[0]->as_symbol()) {
+            if (symbol->name() == "splice-unquote") {
+                std::vector<MalTypePtr> list(ast_seq.begin() + 1,
+                                             ast_seq.end());
+                return mal::list({mal::symbol("concat"), ast_seq_0_seq[1],
+                                  quasiquote(mal::list(list))});
+            }
+        }
+    }
+
+    std::vector<MalTypePtr> list(ast_seq.begin() + 1, ast_seq.end());
+    return mal::list({mal::symbol("cons"), quasiquote(ast_seq[0]),
+                      quasiquote(mal::list(list))});
 }
