@@ -571,7 +571,7 @@ std::vector<T> operator+(std::vector<T> lhs, const std::vector<T>& rhs)
 template <class Iterator>
 class Range {
     using iter_traits = std::iterator_traits<Iterator>;
-    using difference_type = typename iter_traits::difference_type;
+    // using difference_type = typename iter_traits::difference_type;
     using reference = typename iter_traits::reference;
 
 private:
@@ -583,16 +583,16 @@ public:
     Iterator begin() const { return begin_; }
     Iterator end() const { return end_; }
 
-    difference_type size() const { return std::distance(begin_, end_); }
+    size_t size() const { return std::distance(begin_, end_); }
 
-    reference operator[](difference_type index)
+    reference operator[](size_t index)
     {
         auto it = begin_;
         std::advance(it, index);
         return *it;
     }
 
-    reference operator[](difference_type index) const
+    reference operator[](size_t index) const
     {
         auto it = begin_;
         std::advance(it, index);

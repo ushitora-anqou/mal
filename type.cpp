@@ -6,6 +6,7 @@ using TCOSwitch = std::variant<MalTypePtr, std::tuple<MalTypePtr, EnvPtr>>;
 
 TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env);
 MalTypePtr quasiquote(const MalTypePtr& ast);
+MalTypePtr macroexpand(MalTypePtr ast, const EnvPtr& env);
 
 MalTypePtr MalSymbol::eval(EnvPtr env) { return env->get(name_); }
 
@@ -60,6 +61,9 @@ MalTypePtr mal_eval(MalTypePtr ast, EnvPtr env)
     while (true) {
         HOOLIB_THROW_UNLESS(ast, "invalid ast");
 
+        // macro expansion
+        ast = macroexpand(ast, env);
+
         {
             // special eval
             auto ret = mal_eval_special(ast, env);
@@ -106,9 +110,20 @@ TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env)
         return value;
     }
 
+    if (name == "defmacro!") {
+        HOOLIB_THROW_UNLESS(args.size() == 3, "invalid number of argument");
+        auto key_symbol = args[1]->as_symbol();
+        HOOLIB_THROW_UNLESS(key_symbol, "invalid argument");
+        auto func = mal_eval(args[2], env)->as_function();
+        HOOLIB_THROW_UNLESS(func, "invalid argument");
+        func->set_macro();
+        env->set(key_symbol->name(), func);
+        return func;
+    }
+
     if (name == "let*") {
         HOOLIB_THROW_UNLESS(args.size() == 3, "invalid number of argument");
-        auto bindings_src = args[1]->as_list();
+        auto bindings_src = args[1]->as_sequential();
         HOOLIB_THROW_UNLESS(bindings_src, "invalid argument");
         auto bindings = bindings_src->get();
         HOOLIB_THROW_UNLESS(bindings.size() % 2 == 0, "invalid argument");
@@ -165,11 +180,28 @@ TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env)
             }
             binds.push_back(symbol->name());
         }
+        if (variadic) {
+            HOOLIB_THROW_UNLESS(binds.size() + 2 == binds_src.size(),
+                                "invalid argument");
+            auto symbol = binds_src.back()->as_symbol();
+            HOOLIB_THROW_UNLESS(symbol, "invalid argument");
+            binds.push_back(symbol->name());
+        }
+
         return mal::make_shared<MalFunction>([
             variadic, binds, outer_env = env, fn_body_ast = args[2]
         ](auto&& args) {
-            // TODO:process for varadic
-            auto env = mal::make_shared<Env>(outer_env, binds, args);
+            HOOLIB_THROW_UNLESS((variadic && args.size() >= binds.size() - 1) ||
+                                    (!variadic && args.size() == binds.size()),
+                                "invalid argument");
+            auto env = mal::make_shared<Env>(outer_env);
+            for (size_t i = 0; i < (variadic ? binds.size() - 1 : binds.size());
+                 i++)
+                env->set(binds[i], args[i]);
+            if (variadic)
+                env->set(binds.back(),
+                         mal::list(std::vector<MalTypePtr>(
+                             args.begin() + binds.size() - 1, args.end())));
             return mal_eval(fn_body_ast, env);
         });
     }
@@ -182,6 +214,11 @@ TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env)
     if (name == "quasiquote") {
         HOOLIB_THROW_UNLESS(args.size() == 2, "invalid number of arguments");
         return std::make_tuple(quasiquote(args[1]), env);
+    }
+
+    if (name == "macroexpand") {
+        HOOLIB_THROW_UNLESS(args.size() == 2, "invalid number of arguments");
+        return macroexpand(args[1], env);
     }
 
     return nullptr;
@@ -215,4 +252,28 @@ MalTypePtr quasiquote(const MalTypePtr& ast)
     std::vector<MalTypePtr> list(ast_seq.begin() + 1, ast_seq.end());
     return mal::list({mal::symbol("cons"), quasiquote(ast_seq[0]),
                       quasiquote(mal::list(list))});
+}
+
+bool is_macro_call(const MalTypePtr& ast, const EnvPtr& env)
+{
+    auto list = ast->as_list();
+    if (!list || list->get().empty()) return false;
+    auto symbol = list->get()[0]->as_symbol();
+    if (!symbol) return false;
+    auto func_src = env->get_if(symbol->name());
+    if (!func_src) return false;
+    auto func = func_src->as_function();
+    if (!func) return false;
+    return func->is_macro();
+}
+
+MalTypePtr macroexpand(MalTypePtr ast, const EnvPtr& env)
+{
+    while (is_macro_call(ast, env)) {
+        auto list = ast->as_list()->get();
+        auto func = env->get(list[0]->as_symbol()->name())->as_function();
+        ast = func->call(MalFunction::Args(list.begin() + 1, list.end()));
+    }
+
+    return ast;
 }

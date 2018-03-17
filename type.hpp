@@ -89,9 +89,14 @@ public:
 
 private:
     Func func_;
+    bool is_macro_;
 
 public:
-    MalFunction(Func func) : func_(func) {}
+    MalFunction(Func func) : func_(func), is_macro_(false) {}
+
+    void set_macro(bool is_on = true) { is_macro_ = is_on; }
+    bool is_macro() const { return is_macro_; }
+
     MalTypePtr call(const Args& args) { return func_(args); }
     MalTypePtr eval(EnvPtr env)
     {
@@ -229,6 +234,7 @@ protected:
     std::vector<MalTypePtr> eval_items(EnvPtr env);
 
 public:
+    MalSequential() {}
     MalSequential(std::vector<MalTypePtr> items) : items_(std::move(items)) {}
 
     virtual std::string pr_str(bool print_readably) const
@@ -250,6 +256,7 @@ class MalList : public MalSequential {
     MAL_DEFINE_AS(MalList, list);
 
 public:
+    MalList() {}
     MalList(std::vector<MalTypePtr> items) : MalSequential(std::move(items)) {}
 
     std::string pr_str(bool print_readably) const

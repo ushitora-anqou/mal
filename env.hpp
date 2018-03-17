@@ -45,6 +45,15 @@ public:
     }
 
     MalTypePtr get(const std::string& key) { return find(key)->data_[key]; }
+    MalTypePtr get_if(const std::string& key)
+    {
+        try {
+            return get(key);
+        }
+        catch (...) {
+            return nullptr;
+        }
+    }
 };
 
 #endif

@@ -38,7 +38,7 @@ inline std::shared_ptr<MalFalse> make_shared()
     static std::shared_ptr<MalFalse> instance = detail::make_shared<MalFalse>();
     return instance;
 }
-
+inline std::shared_ptr<MalList> list() { return ::mal::make_shared<MalList>(); }
 inline std::shared_ptr<MalList> list(const std::vector<MalTypePtr>& items)
 {
     return ::mal::make_shared<MalList>(items);
