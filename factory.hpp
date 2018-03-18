@@ -43,6 +43,14 @@ inline std::shared_ptr<MalList> list(const std::vector<MalTypePtr>& items)
 {
     return ::mal::make_shared<MalList>(items);
 }
+inline std::shared_ptr<MalVector> vector()
+{
+    return ::mal::make_shared<MalVector>();
+}
+inline std::shared_ptr<MalVector> vector(const std::vector<MalTypePtr>& items)
+{
+    return ::mal::make_shared<MalVector>(items);
+}
 inline std::shared_ptr<MalSymbol> symbol(const std::string& name)
 {
     return ::mal::make_shared<MalSymbol>(name);
@@ -59,6 +67,10 @@ inline std::shared_ptr<MalString> string(const std::string& str)
 {
     return ::mal::make_shared<MalString>(str);
 }
+inline std::shared_ptr<MalString> keyword(const std::string& str)
+{
+    return string(str);
+}
 inline std::shared_ptr<MalNil> nil() { return make_shared<MalNil>(); }
 inline std::shared_ptr<MalTrue> true_() { return make_shared<MalTrue>(); }
 inline std::shared_ptr<MalFalse> false_() { return make_shared<MalFalse>(); }
@@ -68,6 +80,14 @@ inline MalTypePtr boolean(bool b)
         return true_();
     else
         return false_();
+}
+inline std::shared_ptr<MalHashMap> hash_map()
+{
+    return make_shared<MalHashMap>();
+}
+inline std::shared_ptr<MalHashMap> hash_map(MalHashMap::Container c)
+{
+    return ::mal::make_shared<MalHashMap>(std::move(c));
 }
 
 }  // namespace mal

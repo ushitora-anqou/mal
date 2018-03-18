@@ -1,3 +1,6 @@
+step9_try: step9_try.cpp reader.cpp type.cpp env.cpp
+	g++ -o $@ -Wall -std=c++17 -g -O0 $^
+
 step8_macros: step8_macros.cpp reader.cpp type.cpp
 	g++ -o $@ -Wall -std=c++17 -g -O0 $^
 

@@ -35,14 +35,7 @@ public:
         data_[key] = value;
     }
 
-    EnvPtr find(const std::string& key)
-    {
-        auto it = data_.find(key);
-        if (it != data_.end()) return shared_from_this();
-        HOOLIB_THROW_IF(outer_ == nullptr,
-                        HooLib::fok("key '", key, "' was not found."));
-        return outer_->find(key);
-    }
+    EnvPtr find(const std::string& key);
 
     MalTypePtr get(const std::string& key) { return find(key)->data_[key]; }
     MalTypePtr get_if(const std::string& key)

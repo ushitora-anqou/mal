@@ -3,6 +3,7 @@
 #define MAL_TYPE_HPP
 
 #include <memory>
+#include <unordered_map>
 #include <variant>
 #include "hoolib.hpp"
 
@@ -23,6 +24,7 @@ class MalString;
 class MalSequential;
 class MalList;
 class MalVector;
+class MalHashMap;
 
 #define MAL_DEFINE_AS_BASE(classname, typename)                            \
 public:                                                                    \
@@ -34,6 +36,8 @@ public:                                                                    \
 
 class MalType : public std::enable_shared_from_this<MalType> {
 public:
+    MalType() {}
+
     virtual MalTypePtr eval(EnvPtr env) = 0;
 
     virtual std::string pr_str(bool print_readably) const = 0;
@@ -49,6 +53,7 @@ public:
     MAL_DEFINE_AS_BASE(MalSequential, sequential);
     MAL_DEFINE_AS_BASE(MalList, list);
     MAL_DEFINE_AS_BASE(MalVector, vector);
+    MAL_DEFINE_AS_BASE(MalHashMap, hash_map);
 
     virtual bool is_equal_to(const MalTypePtr& rhs) const
     {
@@ -274,6 +279,7 @@ class MalVector : public MalSequential {
     MAL_DEFINE_AS(MalVector, vector);
 
 public:
+    MalVector() {}
     MalVector(std::vector<MalTypePtr> items) : MalSequential(std::move(items))
     {
     }
@@ -286,6 +292,68 @@ public:
     }
 
     MalTypePtr eval(EnvPtr env);
+};
+
+class MalHashMap : public MalType {
+    MAL_DEFINE_GET_THIS_PTR(MalHashMap);
+    MAL_DEFINE_AS(MalHashMap, hash_map);
+
+public:
+    using Container = std::unordered_map<std::string, MalTypePtr>;
+
+private:
+    Container data_;
+
+public:
+    MalHashMap() {}
+    MalHashMap(Container data) : data_(std::move(data)) {}
+
+    MalTypePtr eval(EnvPtr env) override;
+    std::string pr_str(bool print_readably) const override;
+
+    const Container& data() const { return data_; }
+
+    MalTypePtr get_if(const std::string& key)
+    {
+        auto it = data_.find(key);
+        if (it == data_.end()) return nullptr;
+        return it->second;
+    }
+
+    const MalTypePtr get_if(const std::string& key) const
+    {
+        auto it = data_.find(key);
+        if (it == data_.end()) return nullptr;
+        return it->second;
+    }
+
+    MalTypePtr get(const std::string& key)
+    {
+        auto it = data_.find(key);
+        HOOLIB_THROW_UNLESS(it != data_.end(), "not found key");
+        return it->second;
+    }
+
+    const MalTypePtr get(const std::string& key) const
+    {
+        auto it = data_.find(key);
+        HOOLIB_THROW_UNLESS(it != data_.end(), "not found key");
+        return it->second;
+    }
+
+    bool is_equal_to(const MalTypePtr& rhs) const override
+    {
+        auto rhs_hash = rhs->as_hash_map();
+        if (!rhs_hash) return false;
+        const auto& rhs_data = rhs_hash->data();
+        if (data_.size() != rhs_data.size()) return false;
+        for (auto && [ k, v ] : data_) {
+            auto it = rhs_data.find(k);
+            if (it == rhs_data.end()) return false;
+            if (!v->is_equal_to(it->second)) return false;
+        }
+        return true;
+    }
 };
 
 MalTypePtr mal_eval(MalTypePtr ast, EnvPtr env);

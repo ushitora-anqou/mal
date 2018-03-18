@@ -1,4 +1,5 @@
 #include "type.hpp"
+#include "exception.hpp"
 #include "factory.hpp"
 #include "helper.hpp"
 
@@ -221,6 +222,27 @@ TCOSwitch mal_eval_special(MalTypePtr ast, EnvPtr env)
         return macroexpand(args[1], env);
     }
 
+    if (name == "try*") {
+        HOOLIB_THROW_UNLESS(args.size() == 3, "invalid number of arguments");
+        auto catch_list = (*(args.end() - 1))->as_list();
+        HOOLIB_THROW_UNLESS(catch_list && catch_list->get().size() == 3,
+                            "invalid argument");
+        auto catch_symbol = catch_list->get()[0]->as_symbol();
+        HOOLIB_THROW_UNLESS(catch_symbol->name() == "catch*",
+                            "invalid argument");
+        auto excep_bind_symbol = catch_list->get()[1]->as_symbol();
+        HOOLIB_THROW_UNLESS(excep_bind_symbol, "invalid argument");
+        try {
+            auto res = mal_eval(args[1], env);
+            return res;
+        }
+        catch (mal::Exception ex) {
+            auto new_env = mal::make_shared<Env>(env);
+            new_env->set(excep_bind_symbol->name(), ex.get());
+            return mal_eval(catch_list->get()[2], new_env);
+        }
+    }
+
     return nullptr;
 }
 
@@ -276,4 +298,24 @@ MalTypePtr macroexpand(MalTypePtr ast, const EnvPtr& env)
     }
 
     return ast;
+}
+
+MalTypePtr MalHashMap::eval(EnvPtr env)
+{
+    Container ret_src;
+    for (auto&& item : data_) ret_src[item.first] = mal_eval(item.second, env);
+    return mal::hash_map(std::move(ret_src));
+}
+
+std::string MalHashMap::pr_str(bool print_readably) const
+{
+    // FIXME: too slow(?)
+    std::vector<std::string> strs;
+    for (auto&& item : data_) {
+        std::stringstream ss;
+        ss << mal::string(item.first)->pr_str(print_readably) << " "
+           << item.second->pr_str(print_readably);
+        strs.push_back(ss.str());
+    }
+    return "{" + HooLib::join(HOOLIB_RANGE(strs), " ") + "}";
 }

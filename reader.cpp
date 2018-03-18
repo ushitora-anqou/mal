@@ -17,7 +17,8 @@ std::shared_ptr<MalType> Reader::read_atom()
     else if (token[0] == '"')  // string
         return mal::make_shared<MalString>(HooLib::cpp_unescape_string(token));
     else if (token[0] == ':')  // keyword
-        return mal::make_shared<MalString>(mal::helper::string2keyword(token));
+        return mal::make_shared<MalString>(mal::helper::string2keyword(
+            std::string(token.begin() + 1, token.end())));
     else if (token == "nil")
         return mal::make_shared<MalNil>();
     else if (token == "true")
@@ -46,6 +47,11 @@ MalTypePtr Reader::read_form()
     auto next = peek();
     if (next == "(") return mal::make_shared<MalList>(read_list_items(")"));
     if (next == "[") return mal::make_shared<MalVector>(read_list_items("]"));
+    if (next == "{") {
+        auto items = read_list_items("}");
+        return mal::hash_map(
+            mal::helper::make_hash_map_container(HOOLIB_RANGE(items)));
+    }
     if (next == "@") {
         pop();
         auto ast = read_form();
